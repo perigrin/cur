@@ -2,7 +2,6 @@ package Cur::Server;
 use Cogwheel;
 use Cache::Memory;
 use Tree::Trie;
-use Cur::Server::Plugin;
 
 BEGIN {
     extends qw(Cogwheel::Server);
@@ -26,24 +25,13 @@ has handler_map => (
     },
 );
 
-has content_cache => (
-    isa        => 'Object',
-    is         => 'ro',
-    lazy_build => 1,
-    handles    => {
-        cache_set => 'set',
-        cache_get => 'get'
-    },
-);
-
 sub _build_handler_map {
-    return Tree::Trie->new( { deepsearch => 'prefix' } );
-}
-
-sub _build_content_cache {
-    return Cache::Memory->new(
-        cache_root      => '/tmp/mycache',
-        default_expires => '600 sec'
+    return Tree::Trie->new(
+        {
+            end_marker        => '\o/',
+            freeze_end_marker => 1,
+            deepsearch        => 'prefix'
+        }
     );
 }
 
