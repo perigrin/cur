@@ -35,8 +35,8 @@ sub BUILD {
     my ( $self, $params ) = @_;
     if ( keys %$params ) {
         my %conf = (
-            ListenAddress => $params->{address},
-            ListenPort    => $params->{port},
+            ListenAddress => $params->{address} || '127.0.0.1',
+            ListenPort    => $params->{port} || '31339',
             Plugins       => $_[0]->_build_plugins(),
         );
         $self->server( Cur::Server->new(%conf) );

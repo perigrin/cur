@@ -92,17 +92,17 @@ sub local_receive {
     }
 
     my $uri = $req->uri;
-    if ( my $content = $server->cache_get( $req->uri ) ) {
-        $self->response( HTTP::Response->new(200) );
-        $self->content($content);
-        $con->call('finish');
-        return OK;
-    }
+    # if ( my $content = $server->cache_get( $req->uri ) ) {
+    #     $self->response( HTTP::Response->new(200) );
+    #     $self->content($content);
+    #     $con->call('finish');
+    #     return OK;
+    # }
 
     if ( my $handler = $server->get_handler($uri) ) {
         if ( my $data = $handler->handler($req) ) {
             $self->content($data);
-            $server->cache_set( $uri => $data );
+            # $server->cache_set( $uri => $data );
             $self->response( HTTP::Response->new(200) );
             $con->call('finish');
             return OK;

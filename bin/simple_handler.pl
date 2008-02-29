@@ -16,7 +16,7 @@ use Moose;
     has file => (
         isa     => 'Str',
         is      => 'ro',
-        default => sub { 'index.html' },
+        default => sub { $0 },
     );
 
     sub handler {
@@ -75,7 +75,7 @@ has handlers => (
 );
 
 sub _build_app {
-    my $app = Cur->new( address => '78.47.126.42', port => $_[0]->port );
+    my $app = Cur->new( address => '127.0.0.1', port => $_[0]->port );
     $app->server->register_handler( $_[0]->handlers );
     return $app;
 }
