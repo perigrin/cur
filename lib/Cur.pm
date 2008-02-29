@@ -2,6 +2,7 @@ package Cur;
 our $VERSION = '0.0.1';
 use Moose;
 use Cur::Server;
+use Cur::Server::Plugin;
 
 with qw(MooseX::Getopt);
 

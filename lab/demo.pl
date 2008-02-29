@@ -4,6 +4,9 @@ use POE qw(XS::Queue::Array);
 use lib qw(lib);
 use Moose;
 
+use POE::Component::Supervisor;
+use POE::Component::Supervisor::Supervised::Child;
+
 {
 
     package CurApp::Dahut;
@@ -54,15 +57,19 @@ use Moose;
 package CurApp::Runner;
 use Moose;
 use Cur;
-use Proc::Supervisor;
+use POE::Component::Supervisor;
+
+use POE;
 
 with qw(MooseX::Getopt);
 
 has _manager => (
-    isa        => 'Proc::Supervisor',
+    isa        => 'POE::Component::Supervisor',
     is         => 'ro',
     lazy_build => 1,
-    handles    => [qw(add_child)],
+    handles    => {
+        add_child => "start",
+    },
 );
 
 has _handlers => (
@@ -76,7 +83,7 @@ has _handlers => (
 has ip_address => (
     isa     => 'Str',
     is      => 'ro',
-    default => sub { '78.47.126.42' },
+    default => sub { '0.0.0.0' },
 );
 
 has ports => (
@@ -87,13 +94,36 @@ has ports => (
 );
 
 sub _build__manager {
-    my $manager = Proc::Supervisor->new(
+    my $self = shift;
+
+    POE::Component::Supervisor->new(
         children => [
             map {
-                Proc::Supervisor::Proc->new( setup_callback => sub { $_->run } )
-              }
-              map { Cur->new( address => $_[0]->ip_address, port => $_ ) }
-              $_[0]->ports
+                my $port = $_;
+                my $bind = $self->ip_address;
+
+                POE::Component::Supervisor::Supervised::Child->new(
+                    restart_policy => "permanent",
+                    stdout_callback => sub {
+                        $_[OBJECT]->logger->info( "child stdout: " . $_[ARG0] ),
+                    },
+                    stderr_callback => sub {
+                        $_[OBJECT]->logger->info( "child stderr: " . $_[ARG0] ),
+                    },
+                    program => sub {
+                        POE::Session->create(
+                            inline_states => {
+                                _start => sub {
+                                    warn "starting cur: ",
+                                    my $cur = Cur->new( address => $bind, port => $port );
+                                    $_[HEAP]{cur_instance} = $cur;
+                                    $cur->server->start;
+                                },
+                            },
+                        );
+                    },
+                );
+            } $self->ports
         ],
     );
 }
@@ -109,7 +139,14 @@ sub default_handlers {
 
 sub run {
     my ($self) = @_;
-    $self->_manager->start;
+
+    POE::Session->create(
+        inline_states => {
+            _start => sub { $self->_manager },
+        }
+    );
+
+    $poe_kernel->run;
 }
 
 before 'run' => sub {
@@ -120,10 +157,12 @@ before 'run' => sub {
 };
 
 
-my $obj = __PACKAGE__->new_with_options()->run();
+my $obj = __PACKAGE__->new_with_options();
+
+$obj->run();
 
 END { 
-    $obj->manager->stop;
+    $obj->_manager->stop;
 }
 
 __END__
